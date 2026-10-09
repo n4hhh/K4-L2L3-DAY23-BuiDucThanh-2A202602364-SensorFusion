@@ -115,9 +115,9 @@ Không thực hiện bonus.
 
 ## Khai báo sử dụng AI
 
-- Công cụ đã dùng: ChatGPT (OpenAI).
-- Dùng cho phần nào: Hỗ trợ giải thích công thức EKF, Mahalanobis gating, camera projection, thiết kế và triển khai các hàm Part E–H; hướng dẫn debug môi trường Windows, pytest, cách chạy Waymo và diễn giải kết quả. Hỗ trợ soạn và rà soát báo cáo.
-- Cách đã kiểm tra lại: Chạy `pytest student/tests -q` đạt 128 passed; chạy pipeline Waymo với `--fusion compare --seed 0` trên frame 0–198; đối chiếu RMSE, matches, ghost, miss và coverage từ metrics. Kiểm tra artifact và công cụ submission của repo trước khi nộp.
+- Công cụ đã dùng (ChatGPT, Copilot, Claude, …): ChatGPT (OpenAI)
+- Dùng cho phần nào (hàm, câu hỏi, debug): Hỗ trợ triển khai Part E–H gồm EKF, camera projection, Mahalanobis association và track management; hướng dẫn debug, chạy test và phân tích kết quả Waymo; hỗ trợ soạn báo cáo.
+- Cách bạn đã kiểm tra lại (pytest, chạy Waymo, đối chiếu công thức): Chạy 128/128 test passed; chạy Waymo 199 frame ở chế độ compare với seed 0; đối chiếu RMSE, matches, ghost và miss với metrics và logs.
 
 ## Checklist nộp
 
