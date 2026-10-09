@@ -1,47 +1,40 @@
-"""Extended Kalman filter helpers for 6D constant-velocity motion.
-
-Part E supplies prediction and correction for docs/HUONG_DAN_KY_THUAT.md §2.
-Read the shared time step and process-noise settings with get_tracking_params().
-"""
+"""Part E: 6D EKF with constant-velocity motion model."""
 
 from __future__ import annotations
 
-from typing import Any
-from typing import Optional
-
+from typing import Any, Optional
 import numpy as np
+
+from fusion_lab.workspace_support import get_tracking_params
 
 Matrix = np.matrix | np.ndarray
 
-# vi: Gợi ý module — params = get_tracking_params() sau khi import ở trên.
-
 
 def build_F(dt: Optional[float] = None) -> Matrix:
-    """Build the constant-velocity state transition matrix F.
+    """Build 6x6 constant-velocity transition matrix."""
+    if dt is None:
+        dt = get_tracking_params().dt
 
-    Args:
-        dt: Time step in seconds; default from tracking params.
-
-    Returns:
-        6x6 state transition matrix as ``np.matrix``.
-    """
-    # vi: TODO Part E — Nếu dt is None, lấy params.dt từ get_tracking_params().
-    # vi: F = I_6; gán F[0,3]=F[1,4]=F[2,5]=dt (vị trí += v * dt).
-    raise NotImplementedError("TODO: implement build_F")
+    F = np.asmatrix(np.eye(6))
+    F[0, 3] = dt
+    F[1, 4] = dt
+    F[2, 5] = dt
+    return F
 
 
-def build_Q(dt: Optional[float] = None, q: Optional[float] = None) -> Matrix:
-    """Build the process noise covariance matrix Q.
+def build_Q(
+    dt: Optional[float] = None,
+    q: Optional[float] = None,
+) -> Matrix:
+    """Build the lab's diagonal process-noise covariance."""
+    params = get_tracking_params()
 
-    Args:
-        dt: Time step; default from tracking params.
-        q: Process noise scale; default from tracking params.
+    if dt is None:
+        dt = params.dt
+    if q is None:
+        q = params.q
 
-    Returns:
-        6x6 process noise matrix.
-    """
-    # vi: TODO Part E — Q đường chéo: q_diag = dt * q trên 6 trục (mô hình lab).
-    raise NotImplementedError("TODO: implement build_Q")
+    return np.asmatrix(np.eye(6) * dt * q)
 
 
 def ekf_predict(
@@ -50,61 +43,48 @@ def ekf_predict(
     F: Optional[Matrix] = None,
     Q: Optional[Matrix] = None,
 ) -> tuple[Matrix, Matrix]:
-    """Predict state and covariance one time step forward.
+    """Predict state and covariance."""
+    if F is None:
+        F = build_F()
+    if Q is None:
+        Q = build_Q()
 
-    Args:
-        x: State vector (6x1).
-        P: State covariance (6x6).
-        F: Optional transition matrix; build via ``build_F`` if None.
-        Q: Optional process noise; build via ``build_Q`` if None.
+    x_pred = F @ x
+    P_pred = F @ P @ F.T + Q
 
-    Returns:
-        Tuple ``(x_pred, P_pred)``.
-    """
-    # vi: TODO Part E — x_pred = F @ x; P_pred = F @ P @ F.T + Q (dùng ma trận np).
-    raise NotImplementedError("TODO: implement ekf_predict")
+    return x_pred, P_pred
 
 
 def innovation(x: Matrix, meas: Any) -> Matrix:
-    """Compute the measurement residual (innovation) gamma.
-
-    Args:
-        x: Predicted state.
-        meas: Measurement with ``z`` and ``sensor.get_hx(x)``.
-
-    Returns:
-        Innovation vector ``z - h(x)``.
-    """
-    # vi: TODO Part E — return meas.z - meas.sensor.get_hx(x).
-    raise NotImplementedError("TODO: implement innovation")
+    """Measurement residual: z - h(x)."""
+    return meas.z - meas.sensor.get_hx(x)
 
 
-def innovation_covariance(P: Matrix, meas: Any, H: Matrix) -> Matrix:
-    """Compute the innovation covariance S = H P H' + R.
-
-    Args:
-        P: State covariance.
-        meas: Measurement with ``R``.
-        H: Measurement Jacobian.
-
-    Returns:
-        Innovation covariance matrix S.
-    """
-    # vi: TODO Part E — S = H @ P @ H.T + meas.R (dùng @ với cả ndarray/matrix).
-    raise NotImplementedError("TODO: implement innovation_covariance")
+def innovation_covariance(
+    P: Matrix,
+    meas: Any,
+    H: Matrix,
+) -> Matrix:
+    """Innovation covariance: S = H P H.T + R."""
+    return H @ P @ H.T + meas.R
 
 
-def ekf_update(x: Matrix, P: Matrix, meas: Any) -> tuple[Matrix, Matrix]:
-    """Apply an EKF measurement update and return updated state and covariance.
+def ekf_update(
+    x: Matrix,
+    P: Matrix,
+    meas: Any,
+) -> tuple[Matrix, Matrix]:
+    """Correct state and covariance using a measurement."""
+    H = meas.sensor.get_H(x)
 
-    Args:
-        x: Prior state.
-        P: Prior covariance.
-        meas: Associated measurement.
+    gamma = innovation(x, meas)
+    S = innovation_covariance(P, meas, H)
 
-    Returns:
-        Tuple ``(x_upd, P_upd)``.
-    """
-    # vi: TODO Part E — H = meas.sensor.get_H(x); gamma, S; K = P H' S^{-1};
-    # vi: x_upd = x + K gamma; P_upd = (I - K H) P.
-    raise NotImplementedError("TODO: implement ekf_update")
+    K = P @ H.T @ np.linalg.inv(S)
+
+    x_upd = x + K @ gamma
+
+    I = np.asmatrix(np.eye(6))
+    P_upd = (I - K @ H) @ P
+
+    return x_upd, P_upd
